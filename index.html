@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>JSMpeg Stream Client</title>
+	<style type="text/css">
+		html, body {
+			background-color: #111;
+			text-align: center;
+		}
+
+		#telemetry {
+			color: white;
+		}
+		#klv-output {
+			color: grey;
+		}
+	</style>
+	
+</head>
+<body>
+	<canvas id="video-canvas"></canvas>
+	<div id="telemetry"></div>
+    <div id="klv-output"></div>
+	<script type="text/javascript" src="jsmpeg.min.js"></script>
+	<script type="text/javascript">
+		var canvas = document.getElementById('video-canvas');
+		var klv = document.getElementById('klv-output');
+		var telemetry = document.getElementById('telemetry');
+		var url = 'ws://'+document.location.hostname+':8082/';
+
+		var player = new JSMpeg.Player(url, {audio: false, disableWebAssembly: true, canvas: canvas, klvelement: klv});
+
+		klv.addEventListener('klv', function (e) { 
+			var payload = e.detail.payload;
+
+			var platform_tail_number = payload.platform_tail_number?.value;
+			var altitude = payload.sensor_true_altitude?.value;
+			var latitude = payload.sensor_latitude?.value;
+			var longitude = payload.sensor_longitude?.value;
+
+			var roll = payload.platform_roll_angle?.value;
+			var pitch = payload.sensor_relative_elevation_angle?.value;
+			var yaw = payload.platform_heading_angle?.value + payload.sensor_relative_azimuth_angle?.value;
+
+			var result = [];
+			result.push(platform_tail_number || '');
+			result.push("<strong>Altitude:</strong> " + altitude + "m");
+			result.push("<strong>Camera Pitch:</strong> " + pitch);
+			result.push("<strong>Camera Yaw:</strong> " + yaw);
+			result.push(latitude + "," + longitude);
+
+			telemetry.innerHTML = result.map(r => `<div>${r}</div>`).join('');
+		}, false);
+	</script>
+</body>
+</html>

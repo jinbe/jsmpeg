@@ -4,7 +4,9 @@
   "description": "JSMpeg is a Video Player written in JavaScript. It consists of an MPEG-TS demuxer, MPEG1 video & MP2 audio decoders, WebGL & Canvas2D renderers and WebAudio sound output. JSMpeg can load static videos via Ajax and allows low latency streaming (~50ms) via WebSockets.",
   "main": "jsmpeg.min.js",
   "scripts": {
-    "build": "./build.sh"
+    "build": "./build.sh",
+    "websocket": "node websocket-relay.js secretkey 8081 8082",
+    "start": "serve ."
   },
   "repository": {
     "type": "git",
@@ -18,6 +20,8 @@
   "homepage": "https://github.com/jinbe/jsmpeg#readme",
   "devDependencies": {
     "big-integer": "^1.6.51",
-    "uglify-js": "^3.15.2"
+    "serve": "^13.0.2",
+    "uglify-js": "^3.15.2",
+    "ws": "^8.5.0"
   }
 }

@@ -207,18 +207,22 @@ TS.prototype.packetAddData = function(pi, start, end) {
 };
 
 TS.prototype.packetComplete = function(pi) {
-	// only write to buffer if allowed - or is not metadata
-	if (pi.streamId != TS.STREAM.METADATA || (pi.streamId == TS.STREAM.METADATA && pi.pts <= this.lastVideoPTS)) {
+	// write to buffer if not metadata
+	// if metadata wait for pts to catch up to video pts
+	if (pi.streamId != TS.STREAM.METADATA || (pi.streamId == TS.STREAM.METADATA && pi.pts >= (this.lastVideoPTS - TS.METADATA_TOLERANCE))) {
 		// is not metadata so update pts
 		if (pi.streamId != TS.STREAM.METADATA ) {
 			this.lastVideoPTS = pi.pts;
 		}
 		pi.destination.write(pi.pts, pi.buffers);
-	} 
+	}
 	pi.totalLength = 0;
 	pi.currentLength = 0;
 	pi.buffers = [];
 };
+
+// some tolerance. render data frame if close to video frame
+TS.METADATA_TOLERANCE = 0.01;
 
 TS.STREAM = {
 	PACK_HEADER: 0xBA,

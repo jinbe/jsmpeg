@@ -38,7 +38,6 @@ JSMpeg.Decoder.Metadata = (function() {
 
 		this.bits.rewind(128);
 		var startIndex = this.bits.index; // Save this pointer for checking CRC
-		var checksum = 0;
 
 		if (key != -1) {
 
@@ -69,11 +68,8 @@ JSMpeg.Decoder.Metadata = (function() {
 
 			result["payload_length"] = payloadlength;
 
-			var bitsRead = 0;
-
 			do {
 				var key = this.bits.read(8);
-				bitsRead += 8;
 				if (key == 74) {
 					// console.log(key)
 				}
@@ -81,9 +77,7 @@ JSMpeg.Decoder.Metadata = (function() {
 
 				// Length of v, in bytes. Potentially this could be long form length, but it our encoder seems to only output at values at most 127 bits
 				var length = this.bits.read(8);
-				bitsRead += 8;
 				var value = this.getKLVValue(key, length);
-				bitsRead += length * 8;
 
 				if (!!tag) {
 					result["payload"][tag] = {
