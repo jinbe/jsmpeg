@@ -112,6 +112,45 @@ BitBuffer.prototype.appendSingleBuffer = function(buffer) {
 	this.byteLength += buffer.length;
 };
 
+/*
+ * The individual metadata elements that comprise informatin needed to indentify
+the security classification of MPEG-2 streams and file and other metadata are defined
+as the SMTPE KLV metadata elements and the MISB Metadata registry.
+
+The Security Metadata Universal Set 16-byte Universal Label Key shall be:
+
+06 0E 2B 34 02 01 01 01 02 08 02 00 00 00 00 00
+*/
+BitBuffer.prototype.findNextUniversalKey = function() {
+
+	for (var i = (this.index+7 >> 3); i < this.byteLength; i++) {
+		if(
+			this.bytes[i] == 0x06 &&
+			this.bytes[i+1] == 0x0E &&
+			this.bytes[i+2] == 0x2B &&
+			this.bytes[i+3] == 0x34 &&
+			this.bytes[i+4] == 0x02 &&
+			this.bytes[i+5] == 0x0B &&
+			this.bytes[i+6] == 0x01 &&
+			this.bytes[i+7] == 0x01 &&
+			this.bytes[i+8] == 0x0E &&
+			this.bytes[i+9] == 0x01 &&
+			this.bytes[i+10] == 0x03 &&
+			this.bytes[i+11] == 0x01 &&
+			this.bytes[i+12] == 0x01 &&
+			this.bytes[i+13] == 0x00 &&
+			this.bytes[i+14] == 0x00 &&
+			this.bytes[i+15] == 0x00
+		) {
+			this.index = (i+16) << 3;
+			return this.bytes[i];
+		}
+	}
+	this.index = (this.byteLength << 3); //to bits
+	
+	return -1;
+}
+
 BitBuffer.prototype.findNextStartCode = function() {	
 	for (var i = (this.index+7 >> 3); i < this.byteLength; i++) {
 		if(

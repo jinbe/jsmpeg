@@ -69,6 +69,12 @@ var JSMpeg = {
 	//   .enqueuedTime - float, in seconds
 	//   .enabled - wether the output does anything upon receiving data
 	AudioOutput: {}, 
+	
+	// Data Outputs accept JSON data taken from DATA mpeg stream, and emits it
+	// to the user. API:
+	// .render(data) - json data to return the the DOM
+	// .enabled - wether the output does anyting upon receiving data
+	DataOutput: {},
 
 	Now: function() {
 		return window.performance 

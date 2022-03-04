@@ -81,6 +81,7 @@ emcc \
 
 # Concat all .js sources
 cat \
+	node_modules/big-integer/biginteger.js \
 	src/jsmpeg.js \
 	src/video-element.js \
 	src/player.js \
@@ -95,16 +96,25 @@ cat \
 	src/mpeg1-wasm.js \
 	src/mp2.js \
 	src/mp2-wasm.js \
+	src/metadata.js \
 	src/webgl.js \
 	src/canvas2d.js \
 	src/webaudio.js \
 	src/wasm-module.js \
+	src/klvoutput.js \
 	> jsmpeg.js
 
 # Append the .wasm module to the .js source as base64 string
-echo "JSMpeg.WASM_BINARY_INLINED='$(base64 -w 0 jsmpeg.wasm)';" \
-	>> jsmpeg.js
-
+echo | base64 -w0 > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+  # GNU coreutils base64, '-w' supported
+	echo "JSMpeg.WASM_BINARY_INLINED='$(base64 -w 0 jsmpeg.wasm)';" \
+		>> jsmpeg.js
+else
+  # Openssl base64, no wrapping by default
+  	echo "JSMpeg.WASM_BINARY_INLINED='$(base64 -b 0 jsmpeg.wasm)';" \
+		>> jsmpeg.js
+fi
 
 # Minify
 uglifyjs jsmpeg.js -o jsmpeg.min.js

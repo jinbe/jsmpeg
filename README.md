@@ -248,6 +248,48 @@ Using parts of the library without creating a full player should also be fairly 
 
 ## Previous Version
 
-The JSMpeg version currently living in this repo is a complete rewrite of the original jsmpeg library that was just able to decode raw mpeg1video. If you're looking for the old version, see the [v0.2 tag](https://github.com/phoboslab/jsmpeg/releases/tag/v0.2).
+The JSMpeg version currently living in this repo is based on phoboslab's version which is a complete rewrite of the original jsmpeg library that was just able to decode raw mpeg1video. If you're looking for the old version, see the [v0.2 tag](https://github.com/phoboslab/jsmpeg/releases/tag/v0.2).
 
+I have extended JSMpeg to decode [STANAG 4609](https://docplayer.net/7371542-Nato-unclassified-stanag-4609-edition-3.html) metadata streams embedded in motion imagery streams. This is based on the work by [tayre](https://github.com/tayre/klv-decoder).
 
+## Anatomy of a STANAG 4609 stream
+
+A STANAG 4609 stream is transmitted as a stream of MPEG-2 data (TS or Transport Stream). TS consists of a set of elementary streams. These can contain video, and - optionally - audio and metadata. Each stream has a packet identifier (PID). The metadata can be carried asynchronously or synchronously. 
+
+### Asynchronous Carriage of Metadata
+
+Trasport of KLV (Key Length Value) metadata over MPEG-2 TS asynchronously is defined in [SMPTE RP 217](https://ieeexplore.ieee.org/document/7289642). These Packetized Elementary Stream (PES) packets do not use Presentation Time Stamp (PTS). The relationship between PES packets and video frames is established by their proximity each other in the video stream. This may be used to transport static metadata or metadata which is not tied closely in time to the video.
+
+stream_id is 0xBD, indicating "private_stream_1".
+
+### Synchronous Carriage of Metadata
+
+MISB STANDARD 0604 specifies "Use of PES packets to transport metadata" for transporting metadata that is synchronised with the video stream. These PES packets use a PTS in the same encoding as H.264 and MPEG-2. 
+
+The PTS shall signal the time that the metadata becomes relevant. It is assumed that the metadata is decoded instantaneously (i.e. no DTS shall be coded). If a video frame and metadata have the same PTS, they were sampled at the same time.
+
+stream_id is 0xFC, indicating "metadata stream".
+
+### Decoder
+The decoder is implemented by [metadata.js](app/src/jsmpeg/metadata.js). The basic flow of control is to look for the 16-byte universal UAS LDS key within the bit stream, and once found, start reading the remainder of the LDS packet. The payload boundaries are easily checked, since they begin with a Unix timestamp, and end with a checksum. Of note, in JavaScript, the max integer is [2^53](http://ecma262-5.com/ELS5_HTML.htm#Section_8.5), so we need to use [BigInteger.js](https://www.npmjs.com/package/big-integer) in order to handle 8 byte timestamps, which are always the first KLV set within the payload.
+
+The key reference here is [MISB STANDARD 0601.8](https://upload.wikimedia.org/wikipedia/commons/1/19/MISB_Standard_0601.pdf) (the UAS LDS standard) which lists 95 KLV metadata elements, a subset of which STANAG 4609 requires. Importantly, floating point values (for example latitude/longitude points) are mapped to integers, so we must [convert ](app/src/jsmpeg/metadata.js#L99) the incoming values to a more useful realworld datum.
+
+![Example Packet](images/example_packet.png)
+
+Each length in the KLV set is [BER](https://en.wikipedia.org/wiki/X.690#BER_encoding) encoded. In practice it looks like our KLV encoder uses long form encoding for the UAS metadata payload length, and short encoding for each metadata item. Regardless, for demonstration purposes we [read the most significant bit](app/src/jsmpeg/metadata.js#L57) of the payload length to determine the encoding scheme.
+
+![Example Packet](images/example_metadata.png)
+
+A 16-bit block character checksum appears to be used for CRC. Validation is done by a running 16-bit sum through the entire LDS packet starting with the 16 byte local data set key and ending with summing the 2 byte length field of the checksum data item (but not its value). A sample implementation is given in MISB 0601.8, which we implement [here](app/src/jsmpeg/metadata.js#L299). Efficiency could be gained if we didn't loop twice over the packet, but rather accumulated the sum as the packet is processed.
+
+### Renderer
+The renderer is implemented by [klvoutput.js](app/src/jsmpeg/klvoutput.js). It accepts the JSON object constructed by the decoder, and emits a [CustomEvent](https://developer.mozilla.org/en/docs/Web/API/CustomEvent) .
+```javascript
+this.element.dispatchEvent(new CustomEvent('klv', { "detail": data}));
+```
+Interested parties can then listen for this event.
+```javascript
+var klv = document.getElementById('id');
+klv.addEventListener('klv', _callback_);
+```

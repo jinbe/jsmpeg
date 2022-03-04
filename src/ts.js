@@ -10,10 +10,14 @@ var TS = function(options) {
 	this.pesPacketInfo = {};
 	this.startTime = 0;
 	this.currentTime = 0;
+
+	// record last video frame PTS and whether or not to write metadata to the buffer
+	this.lastVideoPTS = 0;
 };
 
 TS.prototype.connect = function(streamId, destination) {
 	this.pesPacketInfo[streamId] = {
+		streamId: streamId, // add stream id so we can identify this packet info
 		destination: destination,
 		currentLength: 0,
 		totalLength: 0,
@@ -58,10 +62,10 @@ TS.prototype.parsePacket = function() {
 		adaptationField = this.bits.read(2),
 		continuityCounter = this.bits.read(4);
 
-
 	// If this is the start of a new payload; signal the end of the previous
 	// frame, if we didn't do so already.
 	var streamId = this.pidsToStreamIds[pid];
+
 	if (payloadStart && streamId) {
 		var pi = this.pesPacketInfo[streamId];
 		if (pi && pi.currentLength) {
@@ -112,7 +116,7 @@ TS.prototype.parsePacket = function() {
 					this.currentTime = pts;
 					if (this.startTime === -1) {
 						this.startTime = pts;
-					}
+					}					
 				}
 
 				var payloadLength = packetLength 
@@ -203,7 +207,14 @@ TS.prototype.packetAddData = function(pi, start, end) {
 };
 
 TS.prototype.packetComplete = function(pi) {
-	pi.destination.write(pi.pts, pi.buffers);
+	// only write to buffer if allowed - or is not metadata
+	if (pi.streamId != TS.STREAM.METADATA || (pi.streamId == TS.STREAM.METADATA && pi.pts <= this.lastVideoPTS)) {
+		// is not metadata so update pts
+		if (pi.streamId != TS.STREAM.METADATA ) {
+			this.lastVideoPTS = pi.pts;
+		}
+		pi.destination.write(pi.pts, pi.buffers);
+	} 
 	pi.totalLength = 0;
 	pi.currentLength = 0;
 	pi.buffers = [];
@@ -218,7 +229,8 @@ TS.STREAM = {
 	PRIVATE_2: 0xBF,
 	AUDIO_1: 0xC0,
 	VIDEO_1: 0xE0,
-	DIRECTORY: 0xFF
+	DIRECTORY: 0xFF,
+	METADATA: 0xFC // metadata stream
 };
 
 return TS;

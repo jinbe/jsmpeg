@@ -54,6 +54,16 @@ var Player = function(url, options) {
 		this.audio.connect(this.audioOut);
 	}
 
+	// setup metadata decoding
+	if(options.data !== false){
+		this.data = new JSMpeg.Decoder.Metadata(options);
+		this.klvOut = new JSMpeg.DataOutput.KLV(options);
+		// KLV data could be in private_1 or metadata streamms
+		this.demuxer.connect(JSMpeg.Demuxer.TS.STREAM.PRIVATE_1, this.data);
+		this.demuxer.connect(JSMpeg.Demuxer.TS.STREAM.METADATA, this.data);
+		this.data.connect(this.klvOut)
+	}
+
 	Object.defineProperty(this, 'currentTime', {
 		get: this.getCurrentTime,
 		set: this.setCurrentTime
@@ -86,7 +96,7 @@ var Player = function(url, options) {
 	}
 	else {
 		this.startLoading();
-		
+
 	}
 };
 
@@ -227,6 +237,11 @@ Player.prototype.updateForStreaming = function() {
 		this.video.decode();
 	}
 
+	// decode data stream
+	if(this.data) {
+		this.data.decode();
+	}
+
 	if (this.audio) {
 		var decoded = false;
 		do {
@@ -236,7 +251,7 @@ Player.prototype.updateForStreaming = function() {
 				this.audioOut.resetEnqueuedTime();
 				this.audioOut.enabled = false;
 			}
-			decoded = this.audio.decode();		
+			decoded = this.audio.decode();
 		} while (decoded);
 		this.audioOut.enabled = true;
 	}
@@ -259,7 +274,7 @@ Player.prototype.updateForStaticFile = function() {
 	if (this.audio && this.audio.canPlay) {
 		// Do we have to decode and enqueue some more audio data?
 		while (
-			!notEnoughData && 
+			!notEnoughData &&
 			this.audio.decodedTime - this.audio.currentTime < 0.25
 		) {
 			notEnoughData = !this.audio.decode();
