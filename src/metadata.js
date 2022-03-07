@@ -9,16 +9,23 @@ JSMpeg.Decoder.Metadata = (function() {
 		JSMpeg.Decoder.Base.call(this, options);
 		var bufferSize = options.audioBufferSize || 512 * 1024;
 		var bufferMode = options.streaming ? JSMpeg.BitBuffer.MODE.EVICT : JSMpeg.BitBuffer.MODE.EXPAND;
+		
 		this.bits = new JSMpeg.BitBuffer(bufferSize, bufferMode);
-
 	};
 
 	DATA.prototype = Object.create(JSMpeg.Decoder.Base.prototype);
 	DATA.prototype.constructor = DATA;
 
+	DATA.prototype.write = function(pts, buffers) {
+		JSMpeg.Decoder.Base.prototype.write.call(this, pts, buffers);
+	};
+
 	DATA.prototype.decode = function() {
-		this.readLDSPacket();
-		return true;
+		if (this.readLDSPacket()) {
+			this.advanceDecodedTime(0);
+			return true;
+		}
+		return false;
 	};
 
 	/*
@@ -95,10 +102,11 @@ JSMpeg.Decoder.Metadata = (function() {
 			// Invoke decode callbacks
 			if (this.destination && validCRC) {
 				this.destination.render(result); // render decoded data to DOM
+				return 1;
 			}
 		}
 
-		return 1;
+		return 0;
 	};
 
 	DATA.prototype.getKLVValue = function(key, length) {

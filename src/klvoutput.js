@@ -9,6 +9,10 @@ var KLV = function(options) {
 };
 
 KLV.prototype.render = function(data) {
+	if (!this.enabled) {
+		return;
+	}
+
 	var output = [];
 	var payload = data.payload;
 	

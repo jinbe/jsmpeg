@@ -10,9 +10,6 @@ var TS = function(options) {
 	this.pesPacketInfo = {};
 	this.startTime = 0;
 	this.currentTime = 0;
-
-	// record last video frame PTS and whether or not to write metadata to the buffer
-	this.lastVideoPTS = 0;
 };
 
 TS.prototype.connect = function(streamId, destination) {
@@ -207,15 +204,7 @@ TS.prototype.packetAddData = function(pi, start, end) {
 };
 
 TS.prototype.packetComplete = function(pi) {
-	// write to buffer if not metadata
-	// if metadata wait for pts to catch up to video pts
-	if (pi.streamId != TS.STREAM.METADATA || (pi.streamId == TS.STREAM.METADATA && pi.pts >= (this.lastVideoPTS - TS.METADATA_TOLERANCE))) {
-		// is not metadata so update pts
-		if (pi.streamId != TS.STREAM.METADATA ) {
-			this.lastVideoPTS = pi.pts;
-		}
-		pi.destination.write(pi.pts, pi.buffers);
-	}
+	pi.destination.write(pi.pts, pi.buffers);
 	pi.totalLength = 0;
 	pi.currentLength = 0;
 	pi.buffers = [];

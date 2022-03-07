@@ -237,9 +237,12 @@ Player.prototype.updateForStreaming = function() {
 		this.video.decode();
 	}
 
-	// decode data stream
+	// decode data stream - synchronise to video
 	if(this.data) {
-		this.data.decode();
+		// If there's a lot of data enqueued already catch up with the decoding
+		while (this.data.decode()) {
+			// noop
+		}
 	}
 
 	if (this.audio) {
@@ -281,8 +284,16 @@ Player.prototype.updateForStaticFile = function() {
 		}
 
 		// Sync video to audio
-		if (this.video && this.video.currentTime < this.audio.currentTime) {
-			notEnoughData = !this.video.decode();
+		if (this.video) {
+			// If there's a lot of data enqueued already catch up with the decoding
+			while (this.data.decode()) {
+				// noop
+			}
+		}
+
+		// decode data stream - synchronise to video
+		if(this.data && this.data.currentTime < this.video.currentTime) {
+			this.data.decode();
 		}
 
 		headroom = this.demuxer.currentTime - this.audio.currentTime;
@@ -303,6 +314,14 @@ Player.prototype.updateForStaticFile = function() {
 			}
 
 			notEnoughData = !this.video.decode();
+		}
+
+		// decode data stream - synchronise to video
+		if(this.data) {
+			// If there's a lot of data enqueued already catch up with the decoding
+			while (this.data.decode()) {
+				// noop
+			}
 		}
 
 		headroom = this.demuxer.currentTime - targetTime;
